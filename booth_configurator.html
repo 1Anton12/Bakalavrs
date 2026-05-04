@@ -1,0 +1,1807 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D Booth Configurator Pro</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "tween.js": "https://cdn.jsdelivr.net/npm/@tweenjs/tween.js@18.6.4/dist/tween.esm.js"
+            }
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Poppins', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            overflow: hidden;
+            color: #fff;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: rgba(20, 20, 40, 0.95);
+            backdrop-filter: blur(12px);
+            border-radius: 32px;
+            padding: 32px;
+            max-width: 480px;
+            width: 90%;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 25px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 24px;
+            font-weight: 600;
+            font-size: 28px;
+            background: linear-gradient(135deg, #fff, #a0a0ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .modal-btn {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 60px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-btn.new {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+        }
+
+        .modal-btn.load {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            border: none;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.05);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .app {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .lang-bar {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 1000;
+            display: flex;
+            gap: 5px;
+            background: rgba(15, 15, 30, 0.9);
+            backdrop-filter: blur(12px);
+            padding: 4px 10px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+
+        .lang-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 11px; /* Чуть меньше шрифт */
+            transition: 0.2s;
+            opacity: 0.6;
+        }
+
+        .lang-btn.active {
+            background: rgba(102, 126, 234, 0.8);
+            opacity: 1;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+        }
+
+        .sidebar-header > div {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .lang-switcher {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: flex-end;
+        }
+
+        .sidebar-header h1 {
+            min-width: 0;
+            flex: 1;
+        }
+
+
+        .sidebar {
+            width: 350px;
+            height: 100vh;
+            max-height: 100vh;
+            min-height: 0;
+            background: rgba(15, 15, 30, 0.95);
+            backdrop-filter: blur(22px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 15px;
+            z-index: 10;
+            transition: width 0.3s ease;
+            position: relative;
+            overscroll-behavior: contain;
+            touch-action: pan-y;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.35) transparent;
+        }
+
+        .sidebar::before,
+        .sidebar::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 30px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .sidebar::before {
+            top: 0;
+            background: linear-gradient(180deg, rgba(15,15,30,0.95), rgba(15,15,30,0));
+        }
+
+        .sidebar::after {
+            bottom: 0;
+            background: linear-gradient(0deg, rgba(15,15,30,0.95), rgba(15,15,30,0));
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.06);
+            border-radius: 999px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.28);
+            border-radius: 999px;
+            border: 2px solid rgba(15,15,30,0.5);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.4);
+        }
+
+        /* Адаптивность для Telegram Mini App и мобильных */
+        @media (max-width: 768px) {
+            .app {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: 40%;
+                order: 2;
+                border-right: none;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .canvas-container {
+                height: 60%;
+                order: 1;
+            }
+            .sidebar-header h1 {
+                font-size: 20px;
+            }
+        }
+
+        .sidebar-header {
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .sidebar-header h1 {
+            font-size: 26px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff, #b0b0ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .sidebar-header p {
+            font-size: 13px;
+            opacity: 0.7;
+            margin-top: 6px;
+        }
+
+        .category {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .category-header {
+            padding: 14px 18px;
+            background: rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .category-content {
+            padding: 0 16px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s ease;
+        }
+
+        .category.active .category-content {
+            max-height: 600px;
+            padding: 16px;
+        }
+
+        .option-group {
+            margin-bottom: 18px;
+        }
+
+        .option-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: #aaa;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .option-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .option-item {
+            background: rgba(30, 30, 50, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.1s;
+            color: #eee;
+        }
+
+        .option-item.selected {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .color-picker {
+            width: 100%;
+            height: 38px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .counter-control {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 6px;
+        }
+
+        .counter-btn {
+            background: #2c3e66;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+
+        .counter-btn:hover {
+            background: #1e2a47;
+        }
+
+        .counter-value {
+            font-size: 18px;
+            font-weight: bold;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .price-section {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            border-radius: 24px;
+            padding: 18px;
+            margin-top: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(4px);
+        }
+
+        .price-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 8px 0;
+        }
+
+        .price-label {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            min-width: 80px;
+            padding: 10px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            background: linear-gradient(135deg, #0a0e27, #1a1a3e);
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 12px;
+            pointer-events: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .selected-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(20, 20, 40, 0.9);
+            backdrop-filter: blur(12px);
+            padding: 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: none;
+            min-width: 200px;
+            z-index: 50;
+        }
+
+        .selected-panel.active {
+            display: block;
+        }
+
+        .selected-panel h3 {
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: #ffaa44;
+        }
+
+        .selected-panel .option-group {
+            margin-bottom: 12px;
+        }
+
+        .slider-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        .slider-control input[type="range"] {
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .slider-control span {
+            font-size: 12px;
+            min-width: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; max-height: 48%; }
+            .app { flex-direction: column; }
+            .canvas-container { height: 52%; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="modeModal" class="modal">
+    <div class="modal-content">
+        <h2 id="modalTitle">✨ Booth Configurator</h2>
+        <div class="modal-buttons">
+            <button class="modal-btn new" id="newModeBtn">➕ Create new</button>
+            <button class="modal-btn load" id="loadModeBtn">📂 Load config</button>
+        </div>
+        <input type="file" id="configFileInput" accept=".json" style="display:none">
+    </div>
+</div>
+
+<div class="app">
+    <div class="sidebar">
+    <div class="sidebar-header">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1 id="title" style="margin: 0;">🎨 Конфигуратор стенда</h1>
+                <p id="subtitle" style="margin: 4px 0 0;">Drag objects with LMB</p>
+            </div>
+            <div class="lang-switcher">
+                <button class="lang-btn" data-lang="ru">RU</button>
+                <button class="lang-btn active" data-lang="en">EN</button>
+                <button class="lang-btn" data-lang="lv">LV</button>
+            </div>
+        </div>
+    </div>
+
+        <div class="category active">
+            <div class="category-header"><span id="dimLabel">📐 Размеры</span><span>▼</span></div>
+            <div class="category-content">
+                <div class="option-group"><label id="lenLabel" class="option-label">Длина (м)</label>
+                    <div class="option-items" id="lengthOpts">
+                        <button class="option-item" data-length="2">2</button><button class="option-item" data-length="3">3</button>
+                        <button class="option-item selected" data-length="4">4</button><button class="option-item" data-length="5">5</button>
+                        <button class="option-item" data-length="6">6</button><button class="option-item" data-length="8">8</button>
+                    </div>
+                </div>
+                <div class="option-group"><label id="widLabel" class="option-label">Ширина (м)</label>
+                    <div class="option-items" id="widthOpts">
+                        <button class="option-item" data-width="2">2</button><button class="option-item selected" data-width="3">3</button>
+                        <button class="option-item" data-width="4">4</button><button class="option-item" data-width="5">5</button>
+                        <button class="option-item" data-width="6">6</button>
+                    </div>
+                </div>
+                <div class="option-group"><label id="heiLabel" class="option-label">Высота (м)</label>
+                    <div class="option-items" id="heightOpts">
+                        <button class="option-item" data-height="2">2</button><button class="option-item selected" data-height="2.5">2.5</button>
+                        <button class="option-item" data-height="3">3</button><button class="option-item" data-height="3.5">3.5</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="category">
+            <div class="category-header"><span id="wallsLabel">🧱 Стены</span><span>▼</span></div>
+            <div class="category-content">
+                <div class="option-group"><label id="wallsCountLabel" class="option-label">Количество стен</label>
+                    <div class="option-items" id="wallsCountOpts">
+                        <button class="option-item" data-walls="1">1 стена</button>
+                        <button class="option-item" data-walls="2">2 стены</button>
+                        <button class="option-item selected" data-walls="3">3 стены</button>
+                    </div>
+                </div>
+                <div class="option-group"><label id="wallColorLabel" class="option-label">Wall Color</label><input type="color" id="wallColorPicker" class="color-picker" value="#ffffff"></div>
+                <div class="option-group"><label id="wallMatLabel" class="option-label">Material</label>
+                    <div class="option-items" id="wallMatOpts">
+                        <button class="option-item selected" data-wallmat="plastic">Plastic</button>
+                        <button class="option-item" data-wallmat="wood">Wood</button>
+                        <button class="option-item" data-wallmat="metal">Metal</button>
+                        <button class="option-item" data-wallmat="fabric">Fabric</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="category">
+            <div class="category-header"><span id="floorLabel">🏢 Пол</span><span>▼</span></div>
+            <div class="category-content">
+                <div class="option-group"><label id="floorColorLabel" class="option-label">Floor Color</label><input type="color" id="floorColorPicker" class="color-picker" value="#cccccc"></div>
+                <div class="option-group"><label id="floorTypeLabel" class="option-label">Floor Type</label>
+                    <div class="option-items" id="floorTypeOpts">
+                        <button class="option-item selected" data-floortype="carpet">Carpet</button>
+                        <button class="option-item" data-floortype="tile">Tile</button>
+                        <button class="option-item" data-floortype="wood">Parquet</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="category">
+            <div class="category-header"><span id="furnLabel">🪑 Мебель</span><span>▼</span></div>
+            <div class="category-content" id="furnitureUI"></div>
+        </div>
+
+        <div class="category">
+            <div class="category-header"><span id="lightLabel">💡 Освещение</span><span>▼</span></div>
+            <div class="category-content">
+                <div class="option-group"><label id="lightTypeLabel" class="option-label">Тип света</label>
+                    <div class="option-items" id="lightTypeOpts">
+                        <button class="option-item selected" data-lighttype="warm">Warm</button>
+                        <button class="option-item" data-lighttype="cool">Cool</button>
+                        <button class="option-item" data-lighttype="neutral">Neutral</button>
+                    </div>
+                </div>
+                <div class="option-group"><label id="lampCountLabel" class="option-label">Количество ламп</label>
+                    <div class="counter-control"><button class="counter-btn" id="lampMinus">-</button><span class="counter-value" id="lampCountVal">2</span><button class="counter-btn" id="lampPlus">+</button></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="category">
+            <div class="category-header"><span id="equipLabel">📺 Оборудование</span><span>▼</span></div>
+            <div class="category-content" id="equipmentUI"></div>
+        </div>
+
+        <div class="price-section">
+            <div class="price-label" id="totalLabel">Total Price</div>
+            <div class="price-value" id="totalPrice">0 €</div>
+            <div class="action-buttons">
+                <button class="btn btn-primary" id="saveBtn">💾 Save</button>
+                <button class="btn btn-secondary" id="resetBtn">🔄 Reset</button>
+                <button class="btn btn-secondary" id="loadConfigBtn">📂 Load JSON</button>
+            </div>
+        </div>
+    </div>
+    <div class="canvas-container">
+        <canvas id="canvas"></canvas>
+        <div id="debug-info" style="position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.5); padding: 5px; font-size: 12px;">Loading...</div>
+        <div class="selected-panel" id="selectedPanel">
+            <h3 id="selectedName">Selected object</h3>
+            <div class="option-group">
+                <label id="rotationLabel" class="option-label">Rotation</label>
+                <div class="slider-control">
+                    <input type="range" id="rotationSlider" min="0" max="360" value="0">
+                    <span id="rotationValue">0°</span>
+                </div>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-secondary" id="deleteObjBtn">🗑️ Delete</button>
+            </div>
+        </div>
+        <div class="info-panel" id="infoText">
+            🖱️ LMB on object → drag | LMB on background → rotate | RMB → pan | R → rotate
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import * as THREE from 'three';
+    import * as TWEEN from 'tween.js';
+
+    // -------------------- ПЕРЕВОДЫ --------------------
+    const translations = {
+        ru: {
+            title:"🎨 Конфигуратор стенда", subtitle:"Перетаскивайте объекты левой кнопкой",
+            dimLabel:"📐 Размеры", lenLabel:"Длина (м)", widLabel:"Ширина (м)", heiLabel:"Высота (м)",
+            wallsLabel:"🧱 Стены", wallsCountLabel:"Количество стен", wallColorLabel:"Цвет стен", wallMatLabel:"Материал",
+            floorLabel:"🏢 Пол", floorColorLabel:"Цвет пола", floorTypeLabel:"Тип покрытия",
+            furnLabel:"🪑 Мебель", lightLabel:"💡 Освещение", lightTypeLabel:"Тип света", lampCountLabel:"Количество ламп",
+            equipLabel:"📺 Оборудование", totalLabel:"Итоговая стоимость",
+            plastic:"Пластик", wood:"Дерево", metal:"Металл", fabric:"Ткань",
+            carpet:"Ковролин", tile:"Плитка", parquet:"Паркет",
+            warm:"Тёплый", cool:"Холодный", neutral:"Нейтральный",
+            table:"Стол", chair:"Стул", counter:"Стойка", shelf:"Полка", sofa:"Диван", showcase:"Витрина",
+            monitor:"Монитор", speaker:"Динамик", lamp:"Лампа", banner:"Баннер",
+            oneWall:"1 стена", twoWalls:"2 стены", threeWalls:"3 стены",
+            saveBtn: "💾 Сохранить", resetBtn: "🔄 Сброс", loadBtn: "📂 Загрузить JSON",
+            selectedName: "Выбран объект", selectedPrefix: "Выбран", objectColorLabel: "Цвет", rotationLabel: "Вращение", deleteBtn: "🗑️ Удалить",
+            modalTitle: "✨ Конфигуратор стенда", newModeBtn: "➕ Создать новый", loadModeBtn: "📂 Загрузить конфиг", loadConfigError: "Ошибка загрузки конфига",
+            savedMsg: "✅ Конфигурация сохранена", infoText: "🖱️ ЛКМ по объекту → тянуть | ЛКМ по фону → вращать | ПКМ → панорама | R → поворот"
+        },
+        en: {
+            title:"🎨 Booth Configurator", subtitle:"Drag objects with LMB",
+            dimLabel:"📐 Dimensions", lenLabel:"Length (m)", widLabel:"Width (m)", heiLabel:"Height (m)",
+            wallsLabel:"🧱 Walls", wallsCountLabel:"Number of walls", wallColorLabel:"Wall Color", wallMatLabel:"Material",
+            floorLabel:"🏢 Floor", floorColorLabel:"Floor Color", floorTypeLabel:"Floor Type",
+            furnLabel:"🪑 Furniture", lightLabel:"💡 Lighting", lightTypeLabel:"Light Type", lampCountLabel:"Lamps",
+            equipLabel:"📺 Equipment", totalLabel:"Total Price",
+            plastic:"Plastic", wood:"Wood", metal:"Metal", fabric:"Fabric",
+            carpet:"Carpet", tile:"Tile", parquet:"Parquet",
+            warm:"Warm", cool:"Cool", neutral:"Neutral",
+            table:"Table", chair:"Chair", counter:"Counter", shelf:"Shelf", sofa:"Sofa", showcase:"Showcase",
+            monitor:"Monitor", speaker:"Speaker", lamp:"Lamp", banner:"Banner",
+            oneWall:"1 wall", twoWalls:"2 walls", threeWalls:"3 walls",
+            saveBtn: "💾 Save", resetBtn: "🔄 Reset", loadBtn: "📂 Load JSON",
+            selectedName: "Selected object", selectedPrefix: "Selected", objectColorLabel: "Color", rotationLabel: "Rotation", deleteBtn: "🗑️ Delete",
+            modalTitle: "✨ Booth Configurator", newModeBtn: "➕ Create new", loadModeBtn: "📂 Load config", loadConfigError: "Failed to load config",
+            savedMsg: "✅ Configuration saved", infoText: "🖱️ LMB on object → drag | LMB on background → rotate | RMB → pan | R → rotate"
+        },
+        lv: {
+            title:"🎨 Stenda konfigurators", subtitle:"Velciet objektus ar LMB",
+            dimLabel:"📐 Izmēri", lenLabel:"Garums (m)", widLabel:"Platums (m)", heiLabel:"Augstums (m)",
+            wallsLabel:"🧱 Sienas", wallsCountLabel:"Sienu skaits", wallColorLabel:"Sienu krāsa", wallMatLabel:"Materiāls",
+            floorLabel:"🏢 Grīda", floorColorLabel:"Grīdas krāsa", floorTypeLabel:"Grīdas tips",
+            furnLabel:"🪑 Mēbeles", lightLabel:"💡 Apgaismojums", lightTypeLabel:"Gaismas tips", lampCountLabel:"Lampu skaits",
+            equipLabel:"📺 Aprīkojums", totalLabel:"Kopējā cena",
+            plastic:"Plastmasa", wood:"Koks", metal:"Metāls", fabric:"Audums",
+            carpet:"Paklājs", tile:"Flīzes", parquet:"Parkets",
+            warm:"Silts", cool:"Vēss", neutral:"Neitrāls",
+            table:"Galds", chair:"Krēsls", counter:"Skaitītājs", shelf:"Plaukts", sofa:"Dīvāns", showcase:"Vitrīna",
+            monitor:"Monitors", speaker:"Skaļrunis", lamp:"Lampa", banner:"Baneris",
+            oneWall:"1 siena", twoWalls:"2 sienas", threeWalls:"3 sienas",
+            saveBtn: "💾 Saglabāt", resetBtn: "🔄 Atiestatīt", loadBtn: "📂 Ielādēt JSON",
+            selectedName: "Izvēlētais objekts", selectedPrefix: "Izvēlēts", objectColorLabel: "Krāsa", rotationLabel: "Rotācija", deleteBtn: "🗑️ Dzēst",
+            modalTitle: "✨ Stenda konfigurators", newModeBtn: "➕ Izveidot jaunu", loadModeBtn: "📂 Ielādēt konfigurāciju", loadConfigError: "Neizdevās ielādēt konfigurāciju",
+            savedMsg: "✅ Konfigurācija saglabāta", infoText: "🖱️ LMB uz objekta → vilkt | LMB uz fona → rotēt | RMB → panoramēšana | R → pagriezt"
+        }
+    };
+
+    let currentLang = 'en';
+    function applyLanguage() {
+        const t = translations[currentLang];
+        document.getElementById('title').innerText = t.title;
+        document.getElementById('subtitle').innerText = t.subtitle;
+        document.getElementById('dimLabel').innerHTML = t.dimLabel;
+        document.getElementById('lenLabel').innerText = t.lenLabel;
+        document.getElementById('widLabel').innerText = t.widLabel;
+        document.getElementById('heiLabel').innerText = t.heiLabel;
+        document.getElementById('wallsLabel').innerHTML = t.wallsLabel;
+        document.getElementById('wallsCountLabel').innerText = t.wallsCountLabel;
+        document.getElementById('wallColorLabel').innerText = t.wallColorLabel;
+        document.getElementById('wallMatLabel').innerText = t.wallMatLabel;
+        document.getElementById('floorLabel').innerHTML = t.floorLabel;
+        document.getElementById('floorColorLabel').innerText = t.floorColorLabel;
+        document.getElementById('floorTypeLabel').innerText = t.floorTypeLabel;
+        document.getElementById('furnLabel').innerHTML = t.furnLabel;
+        document.getElementById('lightLabel').innerHTML = t.lightLabel;
+        document.getElementById('lightTypeLabel').innerText = t.lightTypeLabel;
+        document.getElementById('lampCountLabel').innerText = t.lampCountLabel;
+        document.getElementById('equipLabel').innerHTML = t.equipLabel;
+        document.getElementById('totalLabel').innerText = t.totalLabel;
+        document.getElementById('saveBtn').innerHTML = t.saveBtn;
+        document.getElementById('resetBtn').innerHTML = t.resetBtn;
+        document.getElementById('loadConfigBtn').innerHTML = t.loadBtn;
+        document.getElementById('modalTitle').innerText = t.modalTitle;
+        document.getElementById('newModeBtn').innerHTML = t.newModeBtn;
+        document.getElementById('loadModeBtn').innerHTML = t.loadModeBtn;
+        document.getElementById('selectedName').innerText = selectedObj && selectedObj.userData && selectedObj.userData.type ? `${t.selectedPrefix}: ${t[selectedObj.userData.type] || selectedObj.userData.type}` : t.selectedName;
+        document.getElementById('rotationLabel').innerText = t.rotationLabel;
+        document.getElementById('deleteObjBtn').innerHTML = t.deleteBtn;
+        document.getElementById('infoText').innerHTML = t.infoText;
+        document.querySelectorAll('[data-wallmat]').forEach(btn => { if(t[btn.dataset.wallmat]) btn.innerText = t[btn.dataset.wallmat]; });
+        document.querySelectorAll('[data-floortype]').forEach(btn => { if(t[btn.dataset.floortype]) btn.innerText = t[btn.dataset.floortype]; });
+        document.querySelectorAll('[data-lighttype]').forEach(btn => { if(t[btn.dataset.lighttype]) btn.innerText = t[btn.dataset.lighttype]; });
+        const wallsCountBtns = document.querySelectorAll('[data-walls]');
+        if(wallsCountBtns.length===3) { wallsCountBtns[0].innerText = t.oneWall; wallsCountBtns[1].innerText = t.twoWalls; wallsCountBtns[2].innerText = t.threeWalls; }
+        updateFurnitureUITexts();
+        updateEquipmentUITexts();
+    }
+    function updateFurnitureUITexts() {
+        const t = translations[currentLang];
+        const types = ['table','chair','counter','shelf','sofa','showcase'];
+        types.forEach(type => {
+            const label = document.querySelector(`#furnitureUI .option-label[data-type="${type}"]`);
+            if(label && t[type]) label.innerText = t[type];
+        });
+    }
+    function updateEquipmentUITexts() {
+        const t = translations[currentLang];
+        const types = ['monitor','speaker','banner'];
+        types.forEach(type => {
+            const label = document.querySelector(`#equipmentUI .option-label[data-type="${type}"]`);
+            if(label && t[type]) label.innerText = t[type];
+        });
+    }
+
+    // -------------------- КОНФИГУРАЦИЯ --------------------
+    let config = {
+        dims: { length:4, width:3, height:2.5 },
+        wallsCount: 3,
+        wallColor: '#dfe3ef',
+        wallMaterial: 'plastic',
+        floorColor: '#7d8ea5',
+        floorType: 'tile',
+        lightType: 'warm',
+        lampCount: 3,
+        furniture: { table:0, chair:0, counter:0, shelf:0, sofa:0, showcase:0 },
+        equipment: { monitor:0, speaker:0, banner:0 },
+        items: []
+    };
+    let nextId = 1;
+    const prices = {
+        baseSqm: 120,
+        wallMat: { plastic:30, wood:80, metal:110, fabric:45 },
+        floor: { carpet:25, tile:35, wood:55 },
+        furniture: { table:180, chair:85, counter:320, shelf:210, sofa:250, showcase:450 },
+        equipment: { monitor:650, speaker:220, banner:130 },
+        lamp: 50
+    };
+
+    // 3D глобальные
+    let scene, camera, renderer, boothGroup;
+    let orbitX = 0.8, orbitY = 0.5, radius = 7, center = new THREE.Vector3(0,1.2,0);
+    let panX=0, panY=0, panZ=0;
+    let dragActive = false, lastMousePos = {x:0,y:0}, dragBtn = 0;
+    let selectedObj = null, selectedId = null;
+    let dragPlane = new THREE.Plane(new THREE.Vector3(0,1,0),0);
+    let dragOffsetVec = new THREE.Vector3();
+    let itemMap = new Map();
+    let lamps = [];
+    let originalColors = new Map();
+    let objectRotations = new Map();
+
+    // Текстуры
+    function createWoodTexture() {
+        const canvas = document.createElement('canvas'); canvas.width=512; canvas.height=512;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#deb887'; ctx.fillRect(0,0,512,512);
+        for(let i=0;i<200;i++){ ctx.beginPath(); ctx.moveTo(i*20,0); ctx.lineTo(i*20+10,512); ctx.lineTo(i*20-10,512); ctx.fillStyle='#8b4513'; ctx.fill(); }
+        const tex = new THREE.CanvasTexture(canvas); tex.wrapS=THREE.RepeatWrapping; tex.wrapT=THREE.RepeatWrapping; tex.repeat.set(2,2);
+        return tex;
+    }
+    function createTileTexture() {
+        const canvas = document.createElement('canvas'); canvas.width=512; canvas.height=512;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,512,512);
+        ctx.strokeStyle='#333333'; ctx.lineWidth=8;
+        for(let i=0;i<8;i++){ ctx.beginPath(); ctx.moveTo(i*64,0); ctx.lineTo(i*64,512); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0,i*64); ctx.lineTo(512,i*64); ctx.stroke(); }
+        const tex = new THREE.CanvasTexture(canvas); tex.wrapS=THREE.RepeatWrapping; tex.wrapT=THREE.RepeatWrapping; tex.repeat.set(4,4);
+        return tex;
+    }
+    function createParquetTexture() {
+        const canvas = document.createElement('canvas'); canvas.width=512; canvas.height=512;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle='#deb887'; ctx.fillRect(0,0,512,512);
+        for(let i=0;i<20;i++){ ctx.fillStyle='#654321'; ctx.fillRect(i*50,0,20,512); }
+        const tex = new THREE.CanvasTexture(canvas); tex.wrapS=THREE.RepeatWrapping; tex.wrapT=THREE.RepeatWrapping; tex.repeat.set(4,4);
+        return tex;
+    }
+
+    function getWallMaterial() {
+        switch(config.wallMaterial){
+            case 'wood': return new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness:0.8, metalness:0.0 });
+            case 'metal': return new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness:0.1, metalness:1.0 });
+            case 'fabric': return new THREE.MeshStandardMaterial({ color: 0xf5f5dc, roughness:0.9, metalness:0.0 });
+            default: return new THREE.MeshStandardMaterial({ color: new THREE.Color(config.wallColor), roughness:0.3, metalness:0.0 });
+        }
+    }
+    function getFloorMaterial() {
+        const color = new THREE.Color(config.floorColor);
+        switch(config.floorType){
+            case 'tile': return new THREE.MeshStandardMaterial({ map: createTileTexture(), roughness:0.4, metalness:0.0 });
+            case 'wood': return new THREE.MeshStandardMaterial({ map: createParquetTexture(), roughness:0.7, metalness:0.0 });
+            default: return new THREE.MeshStandardMaterial({ color: color, roughness:0.9, metalness:0.0 });
+        }
+    }
+
+    function syncLampItems() {
+        const lampItems = config.items.filter(item => item.type === 'lamp');
+        const current = lampItems.length;
+        const desired = config.lampCount;
+        const limitX = Math.max(0.5, (config.dims.length / 2) - 0.7);
+        const limitZ = Math.max(0.5, (config.dims.width / 2) - 0.7);
+
+        if(desired > current) {
+            for(let i=current; i<desired; i++) {
+                const item = {
+                    id: nextId++,
+                    type: 'lamp',
+                    category: 'lighting',
+                    posX: (Math.random() * 2 - 1) * limitX,
+                    posZ: (Math.random() * 2 - 1) * limitZ
+                };
+                config.items.push(item);
+            }
+        } else if(desired < current) {
+            const toRemove = lampItems.slice(desired);
+            config.items = config.items.filter(item => !toRemove.some(rem => rem.id === item.id));
+        }
+    }
+
+    function create3DObject(type, id, x, z) {
+        let obj = null;
+        switch(type){
+            case 'table': {
+                const grp = new THREE.Group();
+                const topMat = new THREE.MeshStandardMaterial({ color:0xf0e6d5, roughness:0.3, metalness:0.1 });
+                const top = new THREE.Mesh(new THREE.BoxGeometry(1.4,0.08,0.9), topMat);
+                top.position.y = 0.78;
+                top.castShadow = true;
+                grp.add(top);
+                const legMat = new THREE.MeshStandardMaterial({ color:0x424242, roughness:0.35, metalness:0.8 });
+                const legGeo = new THREE.CylinderGeometry(0.05,0.05,0.8,10);
+                for(let i=-1;i<=1;i+=2){
+                    const leg = new THREE.Mesh(legGeo, legMat);
+                    leg.position.set(i*0.58,0.4,0.35);
+                    leg.castShadow = true;
+                    grp.add(leg);
+                    const leg2 = new THREE.Mesh(legGeo, legMat);
+                    leg2.position.set(i*0.58,0.4,-0.35);
+                    leg2.castShadow = true;
+                    grp.add(leg2);
+                }
+                grp.position.set(x,0,z);
+                obj = grp;
+                break;
+            }
+            case 'chair': {
+                const cgrp = new THREE.Group();
+                const cushionMat = new THREE.MeshStandardMaterial({ color:0x6c5b48, roughness:0.5 });
+                const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.1,0.5), cushionMat);
+                cushion.position.y = 0.45;
+                cushion.castShadow = true;
+                cgrp.add(cushion);
+                const backMat = new THREE.MeshStandardMaterial({ color:0x6c5b48, roughness:0.55 });
+                const back = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,0.08), backMat);
+                back.position.set(0,0.85,-0.2);
+                back.castShadow = true;
+                cgrp.add(back);
+                const frameMat = new THREE.MeshStandardMaterial({ color:0x2c2f33, roughness:0.3, metalness:0.7 });
+                const legGeo = new THREE.CylinderGeometry(0.04,0.04,0.45,10);
+                for(let i=-1;i<=1;i+=2){
+                    const leg = new THREE.Mesh(legGeo, frameMat);
+                    leg.position.set(i*0.18,0.225,0.18);
+                    leg.castShadow = true;
+                    cgrp.add(leg);
+                    const leg2 = new THREE.Mesh(legGeo, frameMat);
+                    leg2.position.set(i*0.18,0.225,-0.18);
+                    leg2.castShadow = true;
+                    cgrp.add(leg2);
+                }
+                cgrp.position.set(x,0,z);
+                obj = cgrp;
+                break;
+            }
+            case 'counter': {
+                const grp = new THREE.Group();
+                const bodyMat = new THREE.MeshStandardMaterial({ color:0xe4d8c3, roughness:0.4 });
+                const body = new THREE.Mesh(new THREE.BoxGeometry(1.2,0.95,0.6), bodyMat);
+                body.position.y = 0.475;
+                body.castShadow = true;
+                grp.add(body);
+                const top = new THREE.Mesh(new THREE.BoxGeometry(1.28,0.08,0.68), new THREE.MeshStandardMaterial({ color:0x4e4a44, roughness:0.25, metalness:0.1 }));
+                top.position.y = 0.98;
+                top.castShadow = true;
+                grp.add(top);
+                const front = new THREE.Mesh(new THREE.BoxGeometry(1.18,0.6,0.05), new THREE.MeshStandardMaterial({ color:0x6d5746, roughness:0.6 }));
+                front.position.set(0,0.45,0.305);
+                front.castShadow = true;
+                grp.add(front);
+                grp.position.set(x,0,z);
+                obj = grp;
+                break;
+            }
+            case 'shelf': {
+                const grp = new THREE.Group();
+                const postMat = new THREE.MeshStandardMaterial({ color:0x424242, roughness:0.4, metalness:0.7 });
+                const postGeo = new THREE.CylinderGeometry(0.04,0.04,1.5,10);
+                for(let i=-1;i<=1;i+=2){
+                    const post = new THREE.Mesh(postGeo, postMat);
+                    post.position.set(i*0.35,0.75,-0.12);
+                    post.castShadow = true;
+                    grp.add(post);
+                    const post2 = new THREE.Mesh(postGeo, postMat);
+                    post2.position.set(i*0.35,0.75,0.12);
+                    post2.castShadow = true;
+                    grp.add(post2);
+                }
+                const shelfMat = new THREE.MeshStandardMaterial({ color:0xd8d5c4, roughness:0.5 });
+                for(let i=0;i<3;i++){
+                    const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.85,0.05,0.35), shelfMat);
+                    shelf.position.set(0,0.3 + i*0.55,0);
+                    shelf.castShadow = true;
+                    grp.add(shelf);
+                }
+                grp.position.set(x,0,z);
+                obj = grp;
+                break;
+            }
+            case 'sofa': {
+                const sgrp = new THREE.Group();
+                const seatMat = new THREE.MeshStandardMaterial({ color:0x445a73, roughness:0.5 });
+                const seat = new THREE.Mesh(new THREE.BoxGeometry(1.4,0.18,0.8), seatMat);
+                seat.position.y = 0.46;
+                seat.castShadow = true;
+                sgrp.add(seat);
+                const back = new THREE.Mesh(new THREE.BoxGeometry(1.4,0.5,0.2), seatMat);
+                back.position.set(0,0.85,-0.25);
+                back.castShadow = true;
+                sgrp.add(back);
+                const armMat = new THREE.MeshStandardMaterial({ color:0x3d4c63, roughness:0.6 });
+                const armL = new THREE.Mesh(new THREE.BoxGeometry(0.18,0.38,0.8), armMat);
+                armL.position.set(-0.63,0.46,0);
+                armL.castShadow = true;
+                sgrp.add(armL);
+                const armR = armL.clone(); armR.position.x = 0.63; sgrp.add(armR);
+                const legMat = new THREE.MeshStandardMaterial({ color:0x232b33, roughness:0.3, metalness:0.8 });
+                for(let i=-1;i<=1;i+=2){
+                    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.5,10), legMat);
+                    leg.position.set(i*0.5,0.25,0.25);
+                    leg.castShadow = true;
+                    sgrp.add(leg);
+                }
+                sgrp.position.set(x,0,z);
+                obj = sgrp;
+                break;
+            }
+            case 'showcase': {
+                const shgrp = new THREE.Group();
+                const frameMat = new THREE.MeshStandardMaterial({ color:0x2f3b57, roughness:0.35, metalness:0.6 });
+                const panelMat = new THREE.MeshStandardMaterial({ color:0xb7c9e2, roughness:0.25, metalness:0.2, transparent:true, opacity:0.65 });
+                const glass = new THREE.Mesh(new THREE.BoxGeometry(0.8,1.25,0.15), panelMat);
+                glass.position.y = 0.75;
+                glass.castShadow = true;
+                shgrp.add(glass);
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(0.85,1.35,0.2), frameMat);
+                frame.position.y = 0.75;
+                frame.castShadow = true;
+                shgrp.add(frame);
+                const shelfMat = new THREE.MeshStandardMaterial({ color:0xe1d9c3, roughness:0.5 });
+                const shelf1 = new THREE.Mesh(new THREE.BoxGeometry(0.72,0.05,0.12), shelfMat);
+                shelf1.position.set(0,0.45,0);
+                shelf1.castShadow = true;
+                shgrp.add(shelf1);
+                const shelf2 = shelf1.clone(); shelf2.position.y = 0.95; shgrp.add(shelf2);
+                shgrp.position.set(x,0,z);
+                obj = shgrp;
+                break;
+            }
+            case 'lamp': {
+                const ceilingY = Math.max(1.8, config.dims.height - 0.25);
+                const grp = new THREE.Group();
+                const socketMat = new THREE.MeshStandardMaterial({ color:0x2c303a, roughness:0.25, metalness:0.85 });
+                const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.25,12), socketMat);
+                rod.position.y = 0.0;
+                grp.add(rod);
+                const canopy = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.04,12), socketMat);
+                canopy.position.y = 0.13;
+                grp.add(canopy);
+                const bulbMat = new THREE.MeshStandardMaterial({ color:0xf8f4e3, emissive:0xfff2d8, emissiveIntensity:0.4, roughness:0.15, transparent:true, opacity:0.92 });
+                const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 12), bulbMat);
+                bulb.position.y = -0.25;
+                grp.add(bulb);
+                grp.position.set(x, ceilingY, z);
+                obj = grp;
+                break;
+            }
+            case 'monitor': {
+                const mng = new THREE.Group();
+                const screenMat = new THREE.MeshStandardMaterial({ color:0x0f172a, roughness:0.2, metalness:0.1 });
+                const screen = new THREE.Mesh(new THREE.BoxGeometry(0.9,0.55,0.04), screenMat);
+                screen.position.y = 0.85;
+                screen.castShadow = true;
+                mng.add(screen);
+                const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.95,0.6,0.02), new THREE.MeshStandardMaterial({ color:0x232b3d, roughness:0.3 }));
+                bezel.position.y = 0.85;
+                bezel.castShadow = true;
+                mng.add(bezel);
+                const stand = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.4,0.12), new THREE.MeshStandardMaterial({ color:0x2f3b4f, roughness:0.3, metalness:0.6 }));
+                stand.position.y = 0.2;
+                stand.castShadow = true;
+                mng.add(stand);
+                const base = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.03,0.3), new THREE.MeshStandardMaterial({ color:0x232b3d, roughness:0.4 }));
+                base.position.y = 0.015;
+                base.castShadow = true;
+                mng.add(base);
+                mng.position.set(x,0,z);
+                obj = mng;
+                break;
+            }
+            case 'speaker': {
+                const grp = new THREE.Group();
+                const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,0.7,16), new THREE.MeshStandardMaterial({ color:0x1d293b, roughness:0.3, metalness:0.2 }));
+                body.position.y = 0.35;
+                body.castShadow = true;
+                grp.add(body);
+                const grill = new THREE.Mesh(new THREE.CircleGeometry(0.16, 16), new THREE.MeshStandardMaterial({ color:0x0f172a, roughness:0.4 }));
+                grill.rotation.x = -Math.PI/2;
+                grill.position.set(0,0.35,0.2);
+                grill.castShadow = true;
+                grp.add(grill);
+                grp.position.set(x,0,z);
+                obj = grp;
+                break;
+            }
+            case 'banner': {
+                const grp = new THREE.Group();
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1.2,12), new THREE.MeshStandardMaterial({ color:0x2b3345, roughness:0.4, metalness:0.6 }));
+                pole.position.y = 0.6;
+                grp.add(pole);
+                const panel = new THREE.Mesh(new THREE.BoxGeometry(0.7,1.0,0.05), new THREE.MeshStandardMaterial({ color:0x5f7d9e, roughness:0.2, metalness:0.05, transparent:true, opacity:0.95 }));
+                panel.position.set(0,0.8,0.03);
+                panel.castShadow = true;
+                grp.add(panel);
+                const base = new THREE.Mesh(new THREE.BoxGeometry(0.4,0.05,0.4), new THREE.MeshStandardMaterial({ color:0x202833, roughness:0.4 }));
+                base.position.y = 0.025;
+                base.castShadow = true;
+                grp.add(base);
+                grp.position.set(x,0,z);
+                obj = grp;
+                break;
+            }
+        }
+        if(obj) {
+            obj.userData = { itemId: id, type: type };
+            if(obj.isGroup) {
+                obj.children.forEach(child => { if(child.material) originalColors.set(child, child.material.color.clone()); });
+            } else {
+                if(obj.material) originalColors.set(obj, obj.material.color.clone());
+            }
+            objectRotations.set(id, 0);
+        }
+        return obj;
+    }
+
+    function rebuildScene() {
+        while(boothGroup.children.length) boothGroup.remove(boothGroup.children[0]);
+        itemMap.clear();
+        originalColors.clear();
+        const { length, width, height } = config.dims;
+        
+        // Пол
+        const floorMat = getFloorMaterial();
+        const floorPlane = new THREE.Mesh(new THREE.PlaneGeometry(length, width), floorMat);
+        floorPlane.rotation.x = -Math.PI/2; floorPlane.receiveShadow = true; floorPlane.castShadow = true;
+        boothGroup.add(floorPlane);
+        
+        // Стены
+        const wallMat = getWallMaterial();
+        const backWall = new THREE.Mesh(new THREE.BoxGeometry(length, height, 0.1), wallMat);
+        backWall.position.set(0, height/2, -width/2); backWall.castShadow=true; backWall.receiveShadow=true;
+        boothGroup.add(backWall);
+        if(config.wallsCount >= 2){
+            const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, height, width), wallMat);
+            leftWall.position.set(-length/2, height/2, 0); leftWall.castShadow=true; leftWall.receiveShadow=true;
+            boothGroup.add(leftWall);
+        }
+        if(config.wallsCount >= 3){
+            const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, height, width), wallMat);
+            rightWall.position.set(length/2, height/2, 0); rightWall.castShadow=true; rightWall.receiveShadow=true;
+            boothGroup.add(rightWall);
+        }
+        
+        // Потолочные фермы и балки (интерьер павильона)
+        const beamMat = new THREE.MeshStandardMaterial({ color:0x555555, roughness:0.7 });
+        for(let i=0; i<4; i++){
+            const beam = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, length+2), beamMat);
+            beam.position.set((i-1.5)*2, height+0.5, 0);
+            beam.castShadow=true;
+            boothGroup.add(beam);
+        }
+        
+        syncLampItems();
+
+        // Объекты
+        config.items.forEach(item => {
+            const obj = create3DObject(item.type, item.id, item.posX, item.posZ);
+            if(obj) {
+                const rot = objectRotations.get(item.id) || 0;
+                obj.rotation.y = rot;
+                obj.scale.set(0,0,0);
+                boothGroup.add(obj);
+                itemMap.set(item.id, obj);
+                new TWEEN.Tween(obj.scale).to({x:1,y:1,z:1}, 500).easing(TWEEN.Easing.Quadratic.Out).start();
+            }
+        });
+        
+        // Лампы
+        lamps.forEach(l => scene.remove(l)); lamps = [];
+        const lampColor = config.lightType==='warm'?0xffaa66:(config.lightType==='cool'?0x88aaff:0xffffff);
+        const lampIntensity = 0.8;
+        const ceilingY = Math.max(1.8, config.dims.height - 0.25);
+        config.items.filter(item => item.type === 'lamp').forEach(item => {
+            const lamp = new THREE.PointLight(lampColor, lampIntensity, 15);
+            lamp.castShadow = true;
+            lamp.shadow.mapSize.width = 512;
+            lamp.shadow.mapSize.height = 512;
+            lamp.position.set(item.posX, ceilingY - 0.1, item.posZ);
+            scene.add(lamp);
+            lamps.push(lamp);
+        });
+        updatePrice();
+    }
+
+    function updatePrice(){
+        const { length, width, height } = config.dims;
+        const area = length*width;
+        let total = prices.baseSqm * area;
+        total += prices.wallMat[config.wallMaterial] * (2*(length+width)*height);
+        total += prices.floor[config.floorType] * area;
+        for(let [k,v] of Object.entries(config.furniture)) total += v * prices.furniture[k];
+        for(let [k,v] of Object.entries(config.equipment)) total += v * prices.equipment[k];
+        total += config.lampCount * prices.lamp;
+        document.getElementById('totalPrice').innerHTML = `${Math.round(total).toLocaleString()} €`;
+    }
+
+    function getMousePlaneIntersect(event, plane, outVec){
+        const rect = renderer.domElement.getBoundingClientRect();
+        const mouse = new THREE.Vector2();
+        mouse.x = ((event.clientX - rect.left)/rect.width)*2 - 1;
+        mouse.y = -((event.clientY - rect.top)/rect.height)*2 + 1;
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+        if(raycaster.ray.intersectPlane(plane, outVec)) return true;
+        return false;
+    }
+
+    function highlightObject(obj, highlight){
+        // Подсветка объекта отключена, чтобы цвет оставался естественным.
+        return;
+    }
+
+    function setSelectedObject(obj) {
+        if(selectedObj && selectedObj !== obj) {
+            highlightObject(selectedObj, false);
+        }
+        selectedObj = obj;
+        selectedId = obj ? obj.userData.itemId : null;
+        if(selectedObj) {
+            highlightObject(selectedObj, true);
+            document.getElementById('selectedPanel').classList.add('active');
+            document.getElementById('selectedName').innerText = `${translations[currentLang].selectedPrefix}: ${translations[currentLang][selectedObj.userData.type] || selectedObj.userData.type}`;
+            const rot = objectRotations.get(selectedId) || 0;
+            document.getElementById('rotationSlider').value = rot;
+            document.getElementById('rotationValue').innerText = rot + '°';
+        } else {
+            document.getElementById('selectedPanel').classList.remove('active');
+        }
+    }
+
+
+    function rotateObject(obj, angle) {
+        if(obj) obj.rotation.y = angle * Math.PI / 180;
+    }
+
+    function onMouseDownObj(e){
+        const rect = renderer.domElement.getBoundingClientRect();
+        const mouse = new THREE.Vector2();
+        mouse.x = ((e.clientX - rect.left)/rect.width)*2 - 1;
+        mouse.y = -((e.clientY - rect.top)/rect.height)*2 + 1;
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(Array.from(itemMap.values()), true);
+        if(intersects.length){
+            let hit = intersects[0].object;
+            selectedObj = null;
+            while(hit){
+                if(hit.userData && hit.userData.itemId){
+                    selectedObj = hit;
+                    break;
+                }
+                if(hit === boothGroup) break;
+                hit = hit.parent;
+            }
+            if(selectedObj && selectedObj.userData.itemId){
+                selectedId = selectedObj.userData.itemId;
+                const yLev = selectedObj.position.y;
+                dragPlane.set(new THREE.Vector3(0,1,0), yLev);
+                const p = new THREE.Vector3();
+                if(getMousePlaneIntersect(e, dragPlane, p)) dragOffsetVec.copy(selectedObj.position).sub(p);
+                dragActive = true;
+                dragBtn = 1;
+                lastMousePos = {x:e.clientX, y:e.clientY};
+                setSelectedObject(selectedObj);
+                
+                e.preventDefault();
+                e.stopPropagation();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function onMouseMoveObj(e){
+        if(selectedObj && dragBtn===1 && selectedId){
+            const p = new THREE.Vector3();
+            if(getMousePlaneIntersect(e, dragPlane, p)){
+                let newPos = p.clone().add(dragOffsetVec);
+                const limitX = (config.dims.length/2)-0.7;
+                const limitZ = (config.dims.width/2)-0.7;
+                newPos.x = Math.max(-limitX, Math.min(limitX, newPos.x));
+                newPos.z = Math.max(-limitZ, Math.min(limitZ, newPos.z));
+                selectedObj.position.copy(newPos);
+                const item = config.items.find(i=>i.id===selectedId);
+                if(item){ item.posX = newPos.x; item.posZ = newPos.z; }
+            }
+            lastMousePos = {x:e.clientX, y:e.clientY};
+            e.preventDefault();
+            return;
+        }
+    }
+
+    function onMouseUpObj(){ 
+        dragActive=false; dragBtn=0; 
+    }
+
+    function initThree(){
+        const canvas = document.getElementById('canvas');
+        const w = canvas.offsetWidth || 800, h = canvas.offsetHeight || 600;
+        
+        const debugInfo = document.getElementById('debug-info');
+        debugInfo.style.display = 'none'; // Скрываем debug info
+        
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0e1726);
+        scene.fog = new THREE.Fog(0x0e1726, 12, 40);
+        
+        camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 100);
+        renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+        renderer.setSize(w,h);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2; // Немного ярче для выставочного зала
+        
+        // Выставочный зал - богатый интерьер
+        const skyGeometry = new THREE.PlaneGeometry(240, 120);
+        const skyMaterial = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0x16223c),
+            transparent: true,
+            opacity: 0.95
+        });
+        const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+        sky.position.set(0, 30, -48);
+        scene.add(sky);
+
+        // Пол выставочного зала (глубокий серый камень)
+        const floorGeometry = new THREE.PlaneGeometry(80, 80);
+        const floorMaterial = new THREE.MeshStandardMaterial({
+            color: 0x2b3345,
+            roughness: 0.45,
+            metalness: 0.05
+        });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI/2;
+        floor.position.y = -0.01;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Стены выставочного зала
+        const wallMaterial = new THREE.MeshStandardMaterial({
+            color: 0x232f44,
+            roughness: 0.85,
+            metalness: 0.02
+        });
+
+        // Задняя стена
+        const backWallGeometry = new THREE.PlaneGeometry(60, 15);
+        const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
+        backWall.position.set(0, 7.5, -15);
+        backWall.receiveShadow = true;
+        scene.add(backWall);
+
+        // Боковые стены
+        const sideWallGeometry = new THREE.PlaneGeometry(60, 15);
+        const leftWall = new THREE.Mesh(sideWallGeometry, wallMaterial);
+        leftWall.position.set(-15, 7.5, 0);
+        leftWall.rotation.y = Math.PI/2;
+        leftWall.receiveShadow = true;
+        scene.add(leftWall);
+
+        const rightWall = new THREE.Mesh(sideWallGeometry, wallMaterial);
+        rightWall.position.set(15, 7.5, 0);
+        rightWall.rotation.y = -Math.PI/2;
+        rightWall.receiveShadow = true;
+        scene.add(rightWall);
+
+        // Потолок с мягкой подсветкой
+        const ceilingGeometry = new THREE.PlaneGeometry(80, 80);
+        const ceilingMaterial = new THREE.MeshStandardMaterial({color: 0x2d3547, roughness: 0.9, metalness: 0});
+        const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
+        ceiling.rotation.x = Math.PI/2;
+        ceiling.position.y = 15;
+        scene.add(ceiling);
+
+        // Декоративные колонны
+        const columnGeometry = new THREE.CylinderGeometry(0.3, 0.3, 15, 16);
+        const columnMaterial = new THREE.MeshStandardMaterial({
+            color: 0xd0d0d0,
+            roughness: 0.4,
+            metalness: 0.1
+        });
+
+        for(let i = 0; i < 4; i++) {
+            const column = new THREE.Mesh(columnGeometry, columnMaterial);
+            column.position.set((i-1.5)*8, 7.5, -12);
+            column.castShadow = true;
+            column.receiveShadow = true;
+            scene.add(column);
+        }
+
+        // Освещение выставочного зала
+        const ambLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambLight);
+
+        // Основное освещение (потолочное)
+        const mainLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        mainLight.position.set(0, 14, 0);
+        mainLight.target.position.set(0, 0, 0);
+        mainLight.castShadow = true;
+        mainLight.shadow.mapSize.width = 2048;
+        mainLight.shadow.mapSize.height = 2048;
+        mainLight.shadow.camera.near = 0.5;
+        mainLight.shadow.camera.far = 50;
+        mainLight.shadow.camera.left = -20;
+        mainLight.shadow.camera.right = 20;
+        mainLight.shadow.camera.top = 20;
+        mainLight.shadow.camera.bottom = -20;
+        scene.add(mainLight);
+        scene.add(mainLight.target);
+
+        // Акцентное освещение
+        const accentLight1 = new THREE.SpotLight(0xfff8e1, 0.8, 20, Math.PI/6);
+        accentLight1.position.set(-8, 12, 8);
+        accentLight1.target.position.set(-8, 0, 8);
+        accentLight1.castShadow = true;
+        accentLight1.shadow.mapSize.width = 1024;
+        accentLight1.shadow.mapSize.height = 1024;
+        scene.add(accentLight1);
+        scene.add(accentLight1.target);
+
+        const accentLight2 = new THREE.SpotLight(0xfff8e1, 0.8, 20, Math.PI/6);
+        accentLight2.position.set(8, 12, 8);
+        accentLight2.target.position.set(8, 0, 8);
+        accentLight2.castShadow = true;
+        accentLight2.shadow.mapSize.width = 1024;
+        accentLight2.shadow.mapSize.height = 1024;
+        scene.add(accentLight2);
+        scene.add(accentLight2.target);
+        
+        boothGroup = new THREE.Group();
+        boothGroup.castShadow = true;
+        scene.add(boothGroup);
+        
+        camera.position.set(10, 6, 10);
+        camera.lookAt(center);
+        
+        rebuildScene();
+        
+        const sidebar = document.querySelector('.sidebar');
+        if(sidebar) sidebar.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            sidebar.scrollTop += e.deltaY;
+        }, { passive: false });
+        
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            if(e.button === 0) { if(!onMouseDownObj(e)) { dragActive=true; dragBtn=0; } }
+            else if(e.button === 2) { dragActive=true; dragBtn=2; }
+            lastMousePos = {x:e.clientX, y:e.clientY};
+        });
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            onMouseMoveObj(e);
+            if(dragActive && dragBtn!==1){
+                const dx = e.clientX - lastMousePos.x, dy = e.clientY - lastMousePos.y;
+                if(dragBtn===0) { orbitX -= dx*0.005; orbitY -= dy*0.005; }
+                else if(dragBtn===2) { panX -= dx*0.01; panY += dy*0.01; }
+                lastMousePos = {x:e.clientX, y:e.clientY};
+            }
+        });
+        renderer.domElement.addEventListener('mouseup', () => { onMouseUpObj(); dragActive=false; dragBtn=0; });
+        renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+        renderer.domElement.addEventListener('wheel', (e) => { radius += e.deltaY*0.01; radius = Math.max(2, Math.min(20, radius)); e.preventDefault(); });
+        
+        document.addEventListener('keydown', (e) => {
+            if(e.key === 'r' || e.key === 'R') {
+                if(selectedObj && selectedId) {
+                    let rot = (objectRotations.get(selectedId) || 0) + 45;
+                    if(rot >= 360) rot -= 360;
+                    objectRotations.set(selectedId, rot);
+                    rotateObject(selectedObj, rot);
+                    document.getElementById('rotationSlider').value = rot;
+                    document.getElementById('rotationValue').innerText = rot + '°';
+                }
+            }
+        });
+        
+        document.getElementById('rotationSlider').addEventListener('input', (e) => {
+            if(selectedObj && selectedId) {
+                const rot = parseInt(e.target.value);
+                objectRotations.set(selectedId, rot);
+                rotateObject(selectedObj, rot);
+                document.getElementById('rotationValue').innerText = rot + '°';
+            }
+        });
+        
+        document.getElementById('deleteObjBtn').addEventListener('click', () => {
+            if(selectedId) {
+                config.items = config.items.filter(i => i.id !== selectedId);
+                itemMap.delete(selectedId);
+                objectRotations.delete(selectedId);
+                boothGroup.remove(selectedObj);
+                selectedObj = null;
+                selectedId = null;
+                document.getElementById('selectedPanel').classList.remove('active');
+                rebuildScene();
+            }
+        });
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            const orbitRad = Math.max(0.1, Math.min(Math.PI-0.1, orbitY));
+            camera.position.x = center.x + radius * Math.sin(orbitRad) * Math.cos(orbitX);
+            camera.position.y = center.y + radius * Math.cos(orbitRad);
+            camera.position.z = center.z + radius * Math.sin(orbitRad) * Math.sin(orbitX);
+            camera.position.add(new THREE.Vector3(panX, panY, 0));
+            camera.lookAt(center);
+            TWEEN.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+    }
+
+    // Инициализация UI
+    function buildFurnitureUI() {
+        const html = ['table','chair','counter','shelf','sofa','showcase'].map(type => `
+            <div class="option-group">
+                <label class="option-label" data-type="${type}">${translations[currentLang][type]}</label>
+                <div class="counter-control">
+                    <button class="counter-btn" data-action="minus" data-type="${type}">-</button>
+                    <span class="counter-value" data-type="${type}">0</span>
+                    <button class="counter-btn" data-action="plus" data-type="${type}">+</button>
+                </div>
+            </div>
+        `).join('');
+        document.getElementById('furnitureUI').innerHTML = html;
+        document.querySelectorAll('#furnitureUI .counter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.dataset.type;
+                const action = btn.dataset.action;
+                const current = config.furniture[type] || 0;
+                const newVal = action === 'plus' ? current + 1 : Math.max(0, current - 1);
+                config.furniture[type] = newVal;
+                document.querySelector(`#furnitureUI .counter-value[data-type="${type}"]`).innerText = newVal;
+                addOrRemoveFurniture(type, current, newVal);
+                updatePrice();
+            });
+        });
+    }
+
+    function buildEquipmentUI() {
+        const html = ['monitor','speaker','banner'].map(type => `
+            <div class="option-group">
+                <label class="option-label" data-type="${type}">${translations[currentLang][type]}</label>
+                <div class="counter-control">
+                    <button class="counter-btn" data-action="minus" data-type="${type}">-</button>
+                    <span class="counter-value" data-type="${type}">0</span>
+                    <button class="counter-btn" data-action="plus" data-type="${type}">+</button>
+                </div>
+            </div>
+        `).join('');
+        document.getElementById('equipmentUI').innerHTML = html;
+        document.querySelectorAll('#equipmentUI .counter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.dataset.type;
+                const action = btn.dataset.action;
+                const current = config.equipment[type] || 0;
+                const newVal = action === 'plus' ? current + 1 : Math.max(0, current - 1);
+                config.equipment[type] = newVal;
+                document.querySelector(`#equipmentUI .counter-value[data-type="${type}"]`).innerText = newVal;
+                addOrRemoveEquipment(type, current, newVal);
+                updatePrice();
+            });
+        });
+    }
+
+    function addOrRemoveFurniture(type, oldCount, newCount) {
+        if(newCount > oldCount) {
+            for(let i=0; i<newCount-oldCount; i++) {
+                const item = { id: nextId++, type: type, category: 'furniture', posX: (Math.random()-0.5)*2, posZ: (Math.random()-0.5)*2 };
+                config.items.push(item);
+                const obj = create3DObject(type, item.id, item.posX, item.posZ);
+                if(obj) { boothGroup.add(obj); itemMap.set(item.id, obj); }
+            }
+        } else {
+            for(let i=0; i<oldCount-newCount; i++) {
+                const item = config.items.find(it => it.type === type && it.category === 'furniture');
+                if(item) {
+                    config.items = config.items.filter(it => it.id !== item.id);
+                    const obj = itemMap.get(item.id);
+                    if(obj) boothGroup.remove(obj);
+                    itemMap.delete(item.id);
+                    objectRotations.delete(item.id);
+                }
+            }
+        }
+    }
+
+    function addOrRemoveEquipment(type, oldCount, newCount) {
+        if(newCount > oldCount) {
+            for(let i=0; i<newCount-oldCount; i++) {
+                const item = { id: nextId++, type: type, category: 'equipment', posX: (Math.random()-0.5)*2, posZ: (Math.random()-0.5)*2 };
+                config.items.push(item);
+                const obj = create3DObject(type, item.id, item.posX, item.posZ);
+                if(obj) { boothGroup.add(obj); itemMap.set(item.id, obj); }
+            }
+        } else {
+            for(let i=0; i<oldCount-newCount; i++) {
+                const item = config.items.find(it => it.type === type && it.category === 'equipment');
+                if(item) {
+                    config.items = config.items.filter(it => it.id !== item.id);
+                    const obj = itemMap.get(item.id);
+                    if(obj) boothGroup.remove(obj);
+                    itemMap.delete(item.id);
+                    objectRotations.delete(item.id);
+                }
+            }
+        }
+    }
+
+    // Обработчики категорий
+    document.querySelectorAll('.category-header').forEach(header => {
+        header.addEventListener('click', () => {
+            header.parentElement.classList.toggle('active');
+        });
+    });
+
+    // Обработчики размеров
+    document.querySelectorAll('[data-length]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            config.dims.length = parseFloat(btn.dataset.length);
+            document.querySelectorAll('[data-length]').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            rebuildScene();
+        });
+    });
+    document.querySelectorAll('[data-width]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            config.dims.width = parseFloat(btn.dataset.width);
+            document.querySelectorAll('[data-width]').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            rebuildScene();
+        });
+    });
+    document.querySelectorAll('[data-height]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            config.dims.height = parseFloat(btn.dataset.height);
+            document.querySelectorAll('[data-height]').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            rebuildScene();
+        });
+    });
+
+    // Обработчики стен
+    document.querySelectorAll('[data-walls]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            config.wallsCount = parseInt(btn.dataset.walls);
+            document.querySelectorAll('[data-walls]').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            rebuildScene();
+        });
+    });
+    document.getElementById('wallColorPicker').addEventListener('change', (e) => {
+        config.wallColor = e.target.value;
+        rebuildScene();
+    });
+    document.querySelectorAll('[data-wallmat]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            config.wallMaterial = btn.dataset.wallmat;
+            document.querySelectorAll('[data-wallmat]').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            rebuildScene();
+        });
+    });
+
+    // Обработчики пола
+    document.getElementById('floorColorPicker').addEventListener('change', (e) => {
+        config.floorColor = e.target.value;
+        rebuildScene();
+    });
+    document.querySelectorAll('[data-floortype]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            config.floorType = btn.dataset.floortype;
+            document.querySelectorAll('[data-floortype]').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            rebuildScene();
+        });
+    });
+
+    // Обработчики освещения
+    document.querySelectorAll('[data-lighttype]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            config.lightType = btn.dataset.lighttype;
+            document.querySelectorAll('[data-lighttype]').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            rebuildScene();
+        });
+    });
+    document.getElementById('lampPlus').addEventListener('click', () => {
+        config.lampCount++;
+        document.getElementById('lampCountVal').innerText = config.lampCount;
+        rebuildScene();
+    });
+    document.getElementById('lampMinus').addEventListener('click', () => {
+        if(config.lampCount > 1) config.lampCount--;
+        document.getElementById('lampCountVal').innerText = config.lampCount;
+        rebuildScene();
+    });
+
+    // Обработчики кнопок
+    document.getElementById('saveBtn').addEventListener('click', () => {
+        const json = JSON.stringify(config);
+        const blob = new Blob([json], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'booth_config.json';
+        a.click();
+        
+        // Переведенное уведомление
+        const msg = translations[currentLang].savedMsg;
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.showAlert(msg);
+        } else {
+            alert(msg);
+        }
+    });
+    document.getElementById('resetBtn').addEventListener('click', () => {
+        config.items = [];
+        config.furniture = { table:0, chair:0, counter:0, shelf:0, sofa:0, showcase:0 };
+        config.equipment = { monitor:0, speaker:0, banner:0 };
+        buildFurnitureUI();
+        buildEquipmentUI();
+        rebuildScene();
+    });
+    document.getElementById('loadConfigBtn').addEventListener('click', () => {
+        document.getElementById('configFileInput').click();
+    });
+    document.getElementById('configFileInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(file) {
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                try {
+                    const loaded = JSON.parse(evt.target.result);
+                    config = loaded;
+                    buildFurnitureUI();
+                    buildEquipmentUI();
+                    rebuildScene();
+                } catch(err) { alert(translations[currentLang].loadConfigError || 'Ошибка загрузки конфига'); }
+            };
+            reader.readAsText(file);
+        }
+    });
+
+    // Языки
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentLang = btn.dataset.lang;
+            applyLanguage();
+        });
+    });
+
+    // Модальное окно
+    document.getElementById('newModeBtn').addEventListener('click', () => {
+        document.getElementById('modeModal').style.display = 'none';
+    });
+    document.getElementById('loadModeBtn').addEventListener('click', () => {
+        document.getElementById('configFileInput').click();
+    });
+
+    // Инициализация
+    buildFurnitureUI();
+    buildEquipmentUI();
+    applyLanguage();
+initThree();
+
+    // Telegram WebApp Integration
+    if (window.Telegram && window.Telegram.WebApp) {
+        const tg = window.Telegram.WebApp;
+        
+        // Принудительно разворачиваем на весь экран несколько раз для надежности
+        tg.expand();
+        tg.ready();
+        setTimeout(() => tg.expand(), 200);
+        setTimeout(() => tg.expand(), 500);
+        
+        // Скрываем модальное окно выбора режима, так как в Mini App мы сразу в режиме конфигурации
+        document.getElementById('modeModal').style.display = 'none';
+        
+        // Handle theme colors
+        document.body.style.backgroundColor = tg.themeParams.bg_color || '#0f0c29';
+        
+        // Close app button
+        tg.MainButton.setText('Confirm Configuration').show().onClick(() => {
+            // Send configuration back to bot if needed
+            tg.sendData(JSON.stringify({
+                action: 'confirm',
+                config: config
+            }));
+            tg.close();
+        });
+    }
+	</script>
+
+</body>
+</html>
