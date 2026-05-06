@@ -514,3 +514,24 @@ window.setConfiguratorLanguage = function(lang) {
         currentLanguage = lang;
     }
 };
+// Обработка кнопок модального окна
+document.addEventListener('DOMContentLoaded', () => {
+    const newBtn = document.getElementById('newModeBtn');
+    const loadBtn = document.getElementById('loadModeBtn');
+    const modal = document.getElementById('modeModal');
+
+    if (newBtn) {
+        newBtn.onclick = () => {
+            console.log("Create New clicked");
+            modal.style.display = 'none'; // Закрываем окно
+        };
+    }
+
+    if (loadBtn) {
+        loadBtn.onclick = () => {
+            console.log("Load Config clicked");
+            // Здесь можно вызвать функцию загрузки, если она есть
+            alert("Load function is not implemented in JS yet");
+        };
+    }
+});
