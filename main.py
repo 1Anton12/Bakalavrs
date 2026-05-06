@@ -34,13 +34,13 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 PAYMENT_TOKEN = os.getenv("PAYMENT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID") or 0)
 SUPPORT_CONTACT = os.getenv("SUPPORT_CONTACT", "@exhibition_stand_bot")
-CONFIGURATOR_URL = "https://kentavrr12.github.io/my-booth-3d/"
+CONFIGURATOR_URL = "https://1anton12.github.io/Bakalavrs/booth_configurator.html"
 MIN_DIM = 2.0
 MAX_DIM = 10.0
 MAX_AREA = 40.0
 
 if not BOT_TOKEN:
-    BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
+    BOT_TOKEN = "8691159185:AAElfFEZ4mxjHqdw3-qvG8Nl_XCGxiKnZUc"
 
 # Import custom modules
 try:
@@ -385,13 +385,15 @@ def get_language_keyboard():
     return kb
 
 def get_start_keyboard(language):
-    url = "https://kentavrr12.github.io/my-booth-3d/"
+    url = CONFIGURATOR_URL 
+    print(f"DEBUG: Opening WebApp with URL: {url}") 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=get_text(language, "3d_configurator"), web_app=WebAppInfo(url=url))],
-        [InlineKeyboardButton(text=get_text(language, "quick_config"), callback_data="start_config")],
-        [InlineKeyboardButton(text=get_text(language, "support"), callback_data="view_support")]
+        [InlineKeyboardButton(text=TEXTS[language]["3d_configurator"], web_app=WebAppInfo(url=url))],
+        [InlineKeyboardButton(text=TEXTS[language]["quick_config"], callback_data="start_config")],
+        [InlineKeyboardButton(text=TEXTS[language]["support_faq"], callback_data="view_support")]
     ])
     return kb
+
 
 def get_length_keyboard(language):
     default_width = 3.0   # для оценки цены
