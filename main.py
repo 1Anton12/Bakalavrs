@@ -390,7 +390,7 @@ def get_start_keyboard(language):
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=TEXTS[language]["3d_configurator"], web_app=WebAppInfo(url=url))],
         [InlineKeyboardButton(text=TEXTS[language]["quick_config"], callback_data="start_config")],
-        [InlineKeyboardButton(text=TEXTS[language]["support_faq"], callback_data="view_support")]
+        [InlineKeyboardButton(text=TEXTS[language]["support"], callback_data="view_support")]
     ])
     return kb
 
