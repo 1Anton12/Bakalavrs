@@ -342,22 +342,46 @@ document.getElementById('widthInput')?.addEventListener('change', (e) => {
 });
 
 document.querySelectorAll('[data-construction]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    // Функция-обработчик
+    const handleConstructionSelect = (e) => {
+        // Предотвращаем стандартное поведение и "двойное" срабатывание
+        if (e.type === 'touchstart') e.preventDefault();
+        
         document.querySelectorAll('[data-construction]').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        state.construction = e.target.dataset.construction;
+        
+        // Используем currentTarget, чтобы всегда попадать на кнопку, даже если нажали на иконку внутри
+        const target = e.currentTarget;
+        target.classList.add('active');
+        state.construction = target.dataset.construction;
+        
+        // Обновляем 3D и стоимость
+        if (typeof createBooth === 'function') createBooth(); 
         updateCostDisplay();
-    });
+    };
+
+    // Вешаем и на клик (для ПК), и на касание (для телефона)
+    btn.addEventListener('click', handleConstructionSelect);
+    btn.addEventListener('touchstart', handleConstructionSelect, { passive: false });
 });
 
+
 document.querySelectorAll('.color-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    const handleColorSelect = (e) => {
+        if (e.type === 'touchstart') e.preventDefault();
+        
         document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        state.wallColor = e.target.dataset.color;
-        createBooth();
-    });
+        const target = e.currentTarget;
+        target.classList.add('active');
+        state.wallColor = target.dataset.color;
+        
+        if (typeof createBooth === 'function') createBooth();
+        updateCostDisplay();
+    };
+
+    btn.addEventListener('click', handleColorSelect);
+    btn.addEventListener('touchstart', handleColorSelect, { passive: false });
 });
+
 
 document.querySelectorAll('[data-material]').forEach(checkbox => {
     checkbox.addEventListener('change', (e) => {
@@ -523,7 +547,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (newBtn) {
         newBtn.onclick = () => {
             console.log("Create New clicked");
-            modal.style.display = 'none'; // Закрываем окно
         };
     }
 
