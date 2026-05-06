@@ -40,7 +40,7 @@ MAX_DIM = 10.0
 MAX_AREA = 40.0
 
 if not BOT_TOKEN:
-    BOT_TOKEN = "8691159185:AAElfFEZ4mxjHqdw3-qvG8Nl_XCGxiKnZUc"
+    BOT_TOKEN = "8691159185:AAGOCOvQMex_7y46TzMCAmfQAXTkHEW4pk0"
 
 # Import custom modules
 try:
