@@ -7,11 +7,20 @@
     
     
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.ready( );
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.ready( );
+    
+    // Функция для гарантированного развертывания
+    function expandApp() {
         tg.expand();
-    </script>
+        // На некоторых ПК работает только если вызвать несколько раз
+        setTimeout(() => tg.expand(), 200);
+    }
+    
+    expandApp();
+</script>
+
 
     <script type="importmap">
         {
